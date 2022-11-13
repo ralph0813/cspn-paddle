@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--root', type=str, default='./data/nyudepth_hdf5', help='data root')
     parser.add_argument('--device', type=str, default='cpu', help='specify gpu device')
     parser.add_argument('--out_path', type=str, default='out/', help='path to save the images')
-    parser.add_argument('--pretrain', type=str, default='./checkpoints/checkpoint-0.pdparams',
+    parser.add_argument('--pretrain', type=str, default='./checkpoints/model_best.pdparams',
                         help='path to load the pretrain model')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
 

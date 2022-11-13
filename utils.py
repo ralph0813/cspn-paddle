@@ -44,7 +44,7 @@ def evaluate_error(gt_depth, pred_depth):
 
 
 def save_checkpoint(state, is_best, epoch, output_directory):
-    checkpoint_filename = os.path.join(output_directory, f'checkpoint-{epoch}.pdparams')
+    checkpoint_filename = os.path.join(output_directory, f'checkpoint_{epoch}.pdparams')
     paddle.save(state, checkpoint_filename)
     if is_best:
         best_filename = os.path.join(output_directory, 'model_best.pdparams')
