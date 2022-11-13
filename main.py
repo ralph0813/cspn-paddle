@@ -18,7 +18,8 @@ def parse_args():
     parser.add_argument('--device', type=str, default='gpu', help='specify gpu device')
     parser.add_argument('--batch_size', type=int, default=4, help='batch size in training')
     parser.add_argument('--num_workers', type=int, default=4, help='num of workers to use')
-    parser.add_argument('--epoch', default=300, type=int, help='number of epoch in training')
+    parser.add_argument('--epoch', default=50, type=int, help='number of epoch in training')
+    parser.add_argument('--interval', default=3, type=float, help='interval of save model')
     parser.add_argument('--lr', default=1e-3, type=float, help='learning rate in training')
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay in training')
     parser.add_argument('--save_path', type=str, default='checkpoints/', help='path to save the checkpoints')
@@ -101,7 +102,12 @@ def train(args):
         best_error = paddle.load(args.pretrain)['val_metrics']
     else:
         start_epoch = 0
-        best_error = float('inf')
+        best_error = {
+            'MSE': float('inf'), 'RMSE': float('inf'), 'ABS_REL': float('inf'), 'LG10': float('inf'),
+            'MAE': float('inf'),
+            'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
+            'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
+        }
 
     for epoch in range(start_epoch, args.epoch):
         train_metrics = train_epoch(model, train_loader, lose_fn, optim, epoch)
@@ -113,7 +119,7 @@ def train(args):
         if val_metrics['ABS_REL'] < best_error['ABS_REL']:
             best_error = val_metrics
             is_best = True
-        if (epoch + 1) % 10 == 0 or is_best:
+        if epoch % args.interval == 0 or is_best:
             utils.save_checkpoint({
                 'args': args,
                 'epoch': epoch,
