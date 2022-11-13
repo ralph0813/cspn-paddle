@@ -96,3 +96,10 @@ def get_vis_depth_img(img):
     grad_colored = cv2.LUT(grad, lut)
 
     return result, grad_colored
+
+
+def get_out_img(pred_img, gt_img):
+    pred_img, grad_colored = get_vis_depth_img(pred_img)
+    gt_img, _ = get_vis_depth_img(gt_img)
+    out_img = cv2.hconcat([gt_img, pred_img])
+    return out_img

@@ -96,10 +96,11 @@ def train(args):
     lose_fn = Wighted_L1_Loss()
 
     if args.pretrain and os.path.exists(args.pretrain):
-        model.load_dict(paddle.load(args.pretrain)['model'])
-        optim.set_state_dict(paddle.load(args.pretrain)['optimizer'])
-        start_epoch = paddle.load(args.pretrain)['epoch']
-        best_error = paddle.load(args.pretrain)['val_metrics']
+        checkpoints = paddle.load(args.pretrain)
+        model.set_state_dict(checkpoints['model'])
+        optim.set_state_dict(checkpoints['optimizer'])
+        start_epoch = checkpoints['epoch']
+        best_error = checkpoints['val_metrics']
     else:
         start_epoch = 0
         best_error = {

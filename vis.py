@@ -10,7 +10,6 @@ import utils
 from dataloader.nyu_loader import NyuDepth
 from loss import Wighted_L1_Loss
 from model.cspn_model import get_model_cspn_resnet
-from utils import get_vis_depth_img
 
 
 def parse_args():
@@ -18,7 +17,8 @@ def parse_args():
     parser.add_argument('--root', type=str, default='./data/nyudepth_hdf5', help='data root')
     parser.add_argument('--device', type=str, default='cpu', help='specify gpu device')
     parser.add_argument('--out_path', type=str, default='out/', help='path to save the images')
-    parser.add_argument('--pretrain', type=str, default='None', help='path to load the pretrain model')
+    parser.add_argument('--pretrain', type=str, default='./checkpoints/checkpoint-0.pdparams',
+                        help='path to load the pretrain model')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
 
     return parser.parse_args()
@@ -39,16 +39,12 @@ def test_vis_epoch(model, data_loader, loss_fn, epoch):
         error_result = utils.evaluate_error(gt_depth=targets, pred_depth=outputs)
         outputs = outputs.numpy()
         targets = targets.numpy()
-        pred_img = outputs[0, 0, :, :]
-        gt_img = targets[0, 0, :, :]
 
-        pred_img, grad_colored = get_vis_depth_img(pred_img)
-        gt_img, _ = get_vis_depth_img(gt_img)
+        pred_img = outputs[0]  # [1,h,w]
+        gt_img = targets[0]  # [1,h,w]
 
-        # save result
-        cv2.imwrite('out/{}_pred_colorized.png'.format(i), pred_img)
-        # cv2.imwrite('out/{}_pred_lut.png'.format(i), grad_colored)
-        cv2.imwrite('out/{}_gt_colorized.png'.format(i), gt_img)
+        out_img = utils.get_out_img(pred_img[0], gt_img[0])
+        cv2.imwrite(f'out/result_{i}.png', out_img)
 
         for key in error_sum.keys():
             error_sum[key] += error_result[key]
@@ -71,7 +67,7 @@ def main(args):
 
     model = get_model_cspn_resnet()
     if args.pretrain and os.path.exists(args.pretrain):
-        model.load_state_dict(paddle.load(args.pretrain)['model'])
+        model.set_state_dict(paddle.load(args.pretrain)['model'])
 
     lose_fn = Wighted_L1_Loss()
     val_metrics = test_vis_epoch(model, val_loader, lose_fn, 0)
