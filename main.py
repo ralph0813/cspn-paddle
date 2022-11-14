@@ -55,6 +55,12 @@ def train_epoch(model, data_loader, loss_fn, optimizer, epoch):
 
         logger.write_log(epoch * len(data_loader) + i, error_result, "train")
 
+        if i % 100 == 0:
+            pred_img = outputs[0]  # [1,h,w]
+            gt_img = targets[0]  # [1,h,w]
+            out_img = utils.get_out_img(pred_img[0], gt_img[0])
+            logger.write_image(epoch * len(data_loader) + i, out_img, "train")
+
     for key in error_sum_train.keys():
         error_sum_train[key] /= len(data_loader)
     return error_sum_train
