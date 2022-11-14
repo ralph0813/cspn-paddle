@@ -16,12 +16,12 @@ def parse_args():
     parser = argparse.ArgumentParser('training')
     parser.add_argument('--root', type=str, default='./data/nyudepth_hdf5', help='data root')
     parser.add_argument('--device', type=str, default='gpu', help='specify gpu device')
-    parser.add_argument('--batch_size', type=int, default=8, help='batch size in training')
+    parser.add_argument('--batch_size', type=int, default=7, help='batch size in training')
     parser.add_argument('--num_workers', type=int, default=4, help='num of workers to use')
     parser.add_argument('--epoch', default=40, type=int, help='number of epoch in training')
     parser.add_argument('--interval', default=1, type=float, help='interval of save model')
     parser.add_argument('--n_sample', default=500, type=float, help='learning rate in training')
-    parser.add_argument('--lr', default=0.001, type=float, help='learning rate in training')
+    parser.add_argument('--lr', default=1e-3, type=float, help='learning rate in training')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum in training')
     parser.add_argument('--dampening', default=0.0, type=float, help='dampening for momentum')
     parser.add_argument('--nesterov', '-n', action='store_true', help='enables Nesterov momentum')
@@ -54,6 +54,7 @@ def train_epoch(model, data_loader, loss_fn, optimizer, epoch):
             error_sum_train[key] += error_result[key]
 
         logger.write_log(epoch * len(data_loader) + i, error_result, "train")
+        logger.add_scalar('train/learning_rate', optimizer.get_lr(), epoch * len(data_loader) + i)
 
         if i % 100 == 0:
             pred_img = outputs[0]  # [1,h,w]
@@ -98,25 +99,27 @@ def val_epoch(model, data_loader, loss_fn, epoch):
 
 def train(args):
     paddle.device.set_device(args.device)
-
+    # load data
     train_set = NyuDepth(args.root, 'train', 'train.csv', args.n_sample)
     val_set = NyuDepth(args.root, 'test', 'val.csv', args.n_sample)
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-
+    # define model
     model = get_model_cspn_resnet()
     model_named_params = [p for _, p in model.named_parameters() if not p.stop_gradient]
+    # define loss
+    lose_fn = Wighted_L1_Loss()
+    # define lr_scheduler and optimizer
+    lr_scheduler = optimizer.lr.ReduceOnPlateau(learning_rate=args.lr)
     optim = optimizer.Momentum(
-        learning_rate=args.lr,
+        learning_rate=lr_scheduler,
         parameters=model_named_params,
         weight_decay=args.weight_decay,
         momentum=args.momentum,
         use_nesterov=args.nesterov,
         # dampening=args.dampening
     )
-
-    lose_fn = Wighted_L1_Loss()
-
+    # load pretrain model
     if args.pretrain and os.path.exists(args.pretrain):
         checkpoints = paddle.load(args.pretrain)
         model.set_state_dict(checkpoints['model'])
@@ -132,7 +135,7 @@ def train(args):
             'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
             'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
         }
-
+    # train
     for epoch in range(start_epoch, args.epoch):
         train_metrics = train_epoch(model, train_loader, lose_fn, optim, epoch)
         val_metrics = val_epoch(model, val_loader, lose_fn, epoch)

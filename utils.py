@@ -65,6 +65,9 @@ class Logger:
         for key in metrics.keys():
             self.writer.add_scalar(f'{mode}/{key}', metrics[key], epoch)
 
+    def add_scalar(self, tag, value, step, walltime=None):
+        self.writer.add_scalar(tag, value, step, walltime)
+
     def write_image(self, epoch, image, mode):
         self.writer.add_image(f'{mode}/{epoch}_out', image, epoch)
 
@@ -102,6 +105,11 @@ def get_vis_depth_img(img):
 
 
 def get_out_img(pred_img, gt_img):
+    if isinstance(pred_img, paddle.Tensor):
+        pred_img = pred_img.numpy()
+    if isinstance(gt_img, paddle.Tensor):
+        gt_img = gt_img.numpy()
+
     pred_img, grad_colored = get_vis_depth_img(pred_img)
     gt_img, _ = get_vis_depth_img(gt_img)
     out_img = cv2.hconcat([gt_img, pred_img])
