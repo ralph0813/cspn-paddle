@@ -12,7 +12,7 @@ from dataloader.transforms import Rotation
 
 
 class NyuDepth(paddle.io.Dataset):
-    def __init__(self, root_dir, split, csv_file, n_sample=200):
+    def __init__(self, root_dir, split, csv_file, n_sample=500):
         super().__init__()
         self.root_dir = root_dir
         self.split = split

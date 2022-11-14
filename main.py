@@ -7,24 +7,28 @@ from paddle.io import DataLoader
 from tqdm import tqdm
 
 import utils
-from dataloader.nyu_loader import NyuDepth
+from dataloader import NyuDepth
 from loss import Wighted_L1_Loss
-from model.cspn_model import get_model_cspn_resnet
+from model import get_model_cspn_resnet
 
 
 def parse_args():
     parser = argparse.ArgumentParser('training')
     parser.add_argument('--root', type=str, default='./data/nyudepth_hdf5', help='data root')
     parser.add_argument('--device', type=str, default='gpu', help='specify gpu device')
-    parser.add_argument('--batch_size', type=int, default=4, help='batch size in training')
+    parser.add_argument('--batch_size', type=int, default=8, help='batch size in training')
     parser.add_argument('--num_workers', type=int, default=4, help='num of workers to use')
-    parser.add_argument('--epoch', default=50, type=int, help='number of epoch in training')
+    parser.add_argument('--epoch', default=40, type=int, help='number of epoch in training')
     parser.add_argument('--interval', default=3, type=float, help='interval of save model')
-    parser.add_argument('--lr', default=1e-3, type=float, help='learning rate in training')
+    parser.add_argument('--n_sample', default=500, type=float, help='learning rate in training')
+    parser.add_argument('--lr', default=1e-2, type=float, help='learning rate in training')
+    parser.add_argument('--momentum', default=0.9, type=float, help='momentum in training')
+    parser.add_argument('--dampening', default=0.0, type=float, help='dampening for momentum')
+    parser.add_argument('--nesterov', '-n', action='store_true', help='enables Nesterov momentum')
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay in training')
-    parser.add_argument('--save_path', type=str, default='checkpoints/', help='path to save the checkpoints')
+    parser.add_argument('--save_path', type=str, default='weights/', help='path to save the checkpoints')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
-    parser.add_argument('--pretrain', type=str, default='checkpoints/model_best.pdparams',
+    parser.add_argument('--pretrain', type=str, default='weights/model_best.pdparams',
                         help='path to load the pretrain model')
     return parser.parse_args()
 
@@ -46,7 +50,7 @@ def train_epoch(model, data_loader, loss_fn, optimizer, epoch):
         optimizer.step()
         # print('Epoch: [{0}][{1}/{2}]\t'
         #       'Loss {loss:.4f}\t'.format(epoch, i, len(data_loader), loss=loss.item()))
-        error_result = utils.evaluate_error(gt_depth=targets, pred_depth=outputs)
+        error_result = utils.evaluate_error(gt_depth=targets.clone(), pred_depth=outputs.clone())
         for key in error_sum_train.keys():
             error_sum_train[key] += error_result[key]
 
@@ -72,6 +76,11 @@ def val_epoch(model, data_loader, loss_fn, epoch):
         # loss = loss_fn(outputs, targets)
         error_result = utils.evaluate_error(gt_depth=targets, pred_depth=outputs)
 
+        pred_img = outputs[0]  # [1,h,w]
+        gt_img = targets[0]  # [1,h,w]
+        out_img = utils.get_out_img(pred_img[0], gt_img[0])
+        logger.write_image(epoch * len(data_loader) + i, out_img, "val")
+
         for key in error_sum.keys():
             error_sum[key] += error_result[key]
 
@@ -85,14 +94,22 @@ def val_epoch(model, data_loader, loss_fn, epoch):
 def train(args):
     paddle.device.set_device(args.device)
 
-    train_set = NyuDepth(args.root, 'train', 'train.csv')
-    val_set = NyuDepth(args.root, 'test', 'val.csv')
+    train_set = NyuDepth(args.root, 'train', 'train.csv', args.n_sample)
+    val_set = NyuDepth(args.root, 'test', 'val.csv', args.n_sample)
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     model = get_model_cspn_resnet()
     model_named_params = [p for _, p in model.named_parameters() if not p.stop_gradient]
-    optim = optimizer.Adam(learning_rate=args.lr, parameters=model_named_params, weight_decay=args.weight_decay)
+    optim = optimizer.Momentum(
+        learning_rate=args.lr,
+        parameters=model_named_params,
+        weight_decay=args.weight_decay,
+        momentum=args.momentum,
+        use_nesterov=args.nesterov,
+        # dampening=args.dampening
+    )
+
     lose_fn = Wighted_L1_Loss()
 
     if args.pretrain and os.path.exists(args.pretrain):

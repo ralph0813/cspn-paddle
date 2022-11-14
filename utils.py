@@ -65,6 +65,9 @@ class Logger:
         for key in metrics.keys():
             self.writer.add_scalar(f'{mode}/{key}', metrics[key], epoch)
 
+    def write_image(self, epoch, image, mode):
+        self.writer.add_image(f'{mode}/{epoch}_out', image, epoch)
+
     def __enter__(self):
         return self
 

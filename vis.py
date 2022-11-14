@@ -45,6 +45,7 @@ def test_vis_epoch(model, data_loader, loss_fn, epoch):
 
         out_img = utils.get_out_img(pred_img[0], gt_img[0])
         cv2.imwrite(f'out/result_{i}.png', out_img)
+        logger.write_image(epoch * len(data_loader) + i, out_img, "val")
 
         for key in error_sum.keys():
             error_sum[key] += error_result[key]
