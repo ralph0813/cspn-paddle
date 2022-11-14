@@ -16,7 +16,7 @@ def parse_args():
     parser = argparse.ArgumentParser('training')
     parser.add_argument('--root', type=str, default='./data/nyudepth_hdf5', help='data root')
     parser.add_argument('--device', type=str, default='gpu', help='specify gpu device')
-    parser.add_argument('--batch_size', type=int, default=7, help='batch size in training')
+    parser.add_argument('--batch_size', type=int, default=8, help='batch size in training')
     parser.add_argument('--num_workers', type=int, default=4, help='num of workers to use')
     parser.add_argument('--epoch', default=40, type=int, help='number of epoch in training')
     parser.add_argument('--interval', default=1, type=float, help='interval of save model')
@@ -33,28 +33,30 @@ def parse_args():
     return parser.parse_args()
 
 
-def train_epoch(model, data_loader, loss_fn, optimizer, epoch):
+def train_epoch(model, data_loader, loss_fn, optim, epoch):
     error_sum_train = {
         'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'LG10': 0, 'MAE': 0,
         'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
         'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
     }
     model.train()
+    loss_sum = 0
     for i, data in tqdm(enumerate(data_loader), desc='Train Epoch: {}'.format(epoch), total=len(data_loader)):
-        optimizer.clear_grad()
+        optim.clear_grad()
         inputs = data['rgbd']
         targets = data['depth']
         outputs = model(inputs)
         loss = loss_fn(outputs, targets)
         loss.backward()
-        optimizer.step()
+        loss_sum += loss.numpy()
+        optim.step()
         # print('Epoch: [{0}][{1}/{2}]\tLoss {loss:.4f}\t'.format(epoch, i, len(data_loader), loss=loss.item()))
         error_result = utils.evaluate_error(gt_depth=targets.clone(), pred_depth=outputs.clone())
         for key in error_sum_train.keys():
             error_sum_train[key] += error_result[key]
 
         logger.write_log(epoch * len(data_loader) + i, error_result, "train")
-        logger.add_scalar('train/learning_rate', optimizer.get_lr(), epoch * len(data_loader) + i)
+        logger.add_scalar('train/learning_rate', optim.get_lr(), epoch * len(data_loader) + i)
 
         if i % 100 == 0:
             pred_img = outputs[0]  # [1,h,w]
@@ -64,7 +66,7 @@ def train_epoch(model, data_loader, loss_fn, optimizer, epoch):
 
     for key in error_sum_train.keys():
         error_sum_train[key] /= len(data_loader)
-    return error_sum_train
+    return error_sum_train, loss_sum / len(data_loader)
 
 
 @paddle.no_grad()
@@ -110,7 +112,14 @@ def train(args):
     # define loss
     lose_fn = Wighted_L1_Loss()
     # define lr_scheduler and optimizer
-    lr_scheduler = optimizer.lr.ReduceOnPlateau(learning_rate=args.lr)
+    lr_scheduler = optimizer.lr.ReduceOnPlateau(
+        learning_rate=args.lr,
+        mode='min',
+        factor=0.1,
+        patience=3,
+        min_lr=0.000001,
+        epsilon=1e-04
+    )
     optim = optimizer.Momentum(
         learning_rate=lr_scheduler,
         parameters=model_named_params,
@@ -120,25 +129,32 @@ def train(args):
         # dampening=args.dampening
     )
     # load pretrain model
+    start_epoch = 0
+    best_error = {
+        'MSE': float('inf'), 'RMSE': float('inf'), 'ABS_REL': float('inf'), 'LG10': float('inf'),
+        'MAE': float('inf'),
+        'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
+        'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
+    }
     if args.pretrain and os.path.exists(args.pretrain):
-        checkpoints = paddle.load(args.pretrain)
-        model.set_state_dict(checkpoints['model'])
-        optim.set_state_dict(checkpoints['optimizer'])
-        start_epoch = checkpoints['epoch']
-        best_error = checkpoints['val_metrics']
-        print(f'load pretrain model from {args.pretrain}')
-    else:
-        start_epoch = 0
-        best_error = {
-            'MSE': float('inf'), 'RMSE': float('inf'), 'ABS_REL': float('inf'), 'LG10': float('inf'),
-            'MAE': float('inf'),
-            'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
-            'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
-        }
+        try:
+            checkpoints = paddle.load(args.pretrain)
+            model.set_state_dict(checkpoints['model'])
+            optim.set_state_dict(checkpoints['optimizer'])
+            lr_scheduler.set_state_dict(checkpoints['lr_scheduler'])
+            start_epoch = checkpoints['epoch']
+            best_error = checkpoints['val_metrics']
+            print(f'load pretrain model from {args.pretrain}')
+        except Exception as e:
+            print(f"{e} load pretrain model failed")
+
     # train
     for epoch in range(start_epoch, args.epoch):
-        train_metrics = train_epoch(model, train_loader, lose_fn, optim, epoch)
+        train_metrics, train_loss = train_epoch(model, train_loader, lose_fn, optim, epoch)
         val_metrics = val_epoch(model, val_loader, lose_fn, epoch)
+
+        lr_scheduler.step(train_loss)
+
         logger.write_log(epoch, train_metrics, "train_epoch")
         logger.write_log(epoch, val_metrics, "val_epoch")
 
@@ -152,9 +168,11 @@ def train(args):
                 'epoch': epoch,
                 'model': model.state_dict(),
                 'optimizer': optim.state_dict(),
+                'lr_scheduler': lr_scheduler.state_dict(),
                 'train_metrics': train_metrics,
-                'val_metrics': val_metrics
+                'val_metrics': val_metrics,
             }, is_best, epoch, args.save_path)
+            print(f"save model at epoch {epoch}")
 
 
 if __name__ == '__main__':
