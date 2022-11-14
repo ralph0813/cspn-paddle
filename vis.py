@@ -69,6 +69,7 @@ def main(args):
     model = get_model_cspn_resnet()
     if args.pretrain and os.path.exists(args.pretrain):
         model.set_state_dict(paddle.load(args.pretrain)['model'])
+        print(f'load model from {args.pretrain}')
 
     lose_fn = Wighted_L1_Loss()
     val_metrics = test_vis_epoch(model, val_loader, lose_fn, 0)

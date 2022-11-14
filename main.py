@@ -19,9 +19,9 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=8, help='batch size in training')
     parser.add_argument('--num_workers', type=int, default=4, help='num of workers to use')
     parser.add_argument('--epoch', default=40, type=int, help='number of epoch in training')
-    parser.add_argument('--interval', default=3, type=float, help='interval of save model')
+    parser.add_argument('--interval', default=1, type=float, help='interval of save model')
     parser.add_argument('--n_sample', default=500, type=float, help='learning rate in training')
-    parser.add_argument('--lr', default=1e-2, type=float, help='learning rate in training')
+    parser.add_argument('--lr', default=0.001, type=float, help='learning rate in training')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum in training')
     parser.add_argument('--dampening', default=0.0, type=float, help='dampening for momentum')
     parser.add_argument('--nesterov', '-n', action='store_true', help='enables Nesterov momentum')
@@ -48,8 +48,7 @@ def train_epoch(model, data_loader, loss_fn, optimizer, epoch):
         loss = loss_fn(outputs, targets)
         loss.backward()
         optimizer.step()
-        # print('Epoch: [{0}][{1}/{2}]\t'
-        #       'Loss {loss:.4f}\t'.format(epoch, i, len(data_loader), loss=loss.item()))
+        # print('Epoch: [{0}][{1}/{2}]\tLoss {loss:.4f}\t'.format(epoch, i, len(data_loader), loss=loss.item()))
         error_result = utils.evaluate_error(gt_depth=targets.clone(), pred_depth=outputs.clone())
         for key in error_sum_train.keys():
             error_sum_train[key] += error_result[key]
@@ -118,6 +117,7 @@ def train(args):
         optim.set_state_dict(checkpoints['optimizer'])
         start_epoch = checkpoints['epoch']
         best_error = checkpoints['val_metrics']
+        print(f'load pretrain model from {args.pretrain}')
     else:
         start_epoch = 0
         best_error = {
