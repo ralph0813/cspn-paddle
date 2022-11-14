@@ -68,8 +68,8 @@ class Logger:
     def add_scalar(self, tag, value, step, walltime=None):
         self.writer.add_scalar(tag, value, step, walltime)
 
-    def write_image(self, epoch, image, mode):
-        self.writer.add_image(f'{mode}/{epoch}_out', image, epoch)
+    def write_image(self, tag, image, step, **kwargs):
+        self.writer.add_image(tag, image, step, **kwargs)
 
     def __enter__(self):
         return self

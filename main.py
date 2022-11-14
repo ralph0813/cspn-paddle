@@ -62,7 +62,7 @@ def train_epoch(model, data_loader, loss_fn, optim, epoch):
             pred_img = outputs[0]  # [1,h,w]
             gt_img = targets[0]  # [1,h,w]
             out_img = utils.get_out_img(pred_img[0], gt_img[0])
-            logger.write_image(epoch * len(data_loader) + i, out_img, "train")
+            logger.write_image("train", out_img, epoch * len(data_loader) + i)
 
     for key in error_sum_train.keys():
         error_sum_train[key] /= len(data_loader)
@@ -87,7 +87,7 @@ def val_epoch(model, data_loader, loss_fn, epoch):
         pred_img = outputs[0]  # [1,h,w]
         gt_img = targets[0]  # [1,h,w]
         out_img = utils.get_out_img(pred_img[0], gt_img[0])
-        logger.write_image(epoch * len(data_loader) + i, out_img, "val")
+        logger.write_image("val", out_img, epoch * len(data_loader) + i)
 
         for key in error_sum.keys():
             error_sum[key] += error_result[key]
