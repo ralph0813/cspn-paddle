@@ -1,5 +1,6 @@
 import os
 import shutil
+from typing import Dict, Union, Any
 
 import cv2
 import numpy as np
@@ -16,14 +17,14 @@ def max_of_two(y_over_z, z_over_y):
 def evaluate_error(gt_depth, pred_depth):
     # for numerical stability
     depth_mask = gt_depth > 0.0001
-    error = {'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'MAE': 0,
-             'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
-             'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0,
-             }
+    error = {
+        'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'MAE': 0,
+        'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
+        'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
+    }
     _pred_depth = pred_depth[depth_mask]
     _gt_depth = gt_depth[depth_mask]
     n_valid_element = _gt_depth.shape[0]
-
     if n_valid_element > 0:
         diff_mat = paddle.abs(_gt_depth - _pred_depth)
         rel_mat = paddle.divide(diff_mat, _gt_depth)
@@ -33,7 +34,7 @@ def evaluate_error(gt_depth, pred_depth):
         error['ABS_REL'] = paddle.sum(rel_mat) / n_valid_element
         y_over_z = paddle.divide(_gt_depth, _pred_depth)
         z_over_y = paddle.divide(_pred_depth, _gt_depth)
-        max_ratio = max_of_two(y_over_z, z_over_y)
+        max_ratio = paddle.maximum(y_over_z, z_over_y)
         error['DELTA1.02'] = paddle.sum(max_ratio < 1.02).numpy() / float(n_valid_element)
         error['DELTA1.05'] = paddle.sum(max_ratio < 1.05).numpy() / float(n_valid_element)
         error['DELTA1.10'] = paddle.sum(max_ratio < 1.10).numpy() / float(n_valid_element)
@@ -41,10 +42,11 @@ def evaluate_error(gt_depth, pred_depth):
         error['DELTA1.25^2'] = paddle.sum(max_ratio < 1.25 ** 2).numpy() / float(n_valid_element)
         error['DELTA1.25^3'] = paddle.sum(max_ratio < 1.25 ** 3).numpy() / float(n_valid_element)
 
-    for key in error.keys():
-        error[key] = error[key].item()
+    error['MSE'] = error['MSE'].numpy()
+    error['RMSE'] = error['RMSE'].numpy()
+    error['ABS_REL'] = error['ABS_REL'].numpy()
+    error['MAE'] = error['MAE'].numpy()
     return error
-
 
 
 class Logger:

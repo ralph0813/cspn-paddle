@@ -290,21 +290,28 @@ class ResNet(nn.Layer):
         return x
 
 
-def get_model_cspn_resnet(pretrained=False):
-    """Constructs a ResNet-50 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], UpProj_Block)
-    # if pretrained:
-    #     print('==> Load pretrained model from ', model_path['resnet50'])
-    #     pretrained_dict = torch.load(model_path['resnet50'])
-    #     model.load_state_dict(update_model.update_model(model, pretrained_dict))
-    return model
+def resnet18():
+    return ResNet(Bottleneck, [2, 2, 2, 2], UpProj_Block)
+
+
+def resnet50():
+    return ResNet(Bottleneck, [3, 4, 6, 3], UpProj_Block)
+
+
+def resnet101():
+    return ResNet(Bottleneck, [3, 4, 23, 3], UpProj_Block)
+
+
+def resnet151():
+    return ResNet(Bottleneck, [3, 8, 36, 3], UpProj_Block)
+
+
+def get_model_cspn_resnet():
+    return resnet50()
 
 
 if __name__ == '__main__':
-    model = get_model_cspn_resnet(pretrained=False)
+    model = get_model_cspn_resnet()
     x = paddle.randn((8, 4, 228, 304))
     y = model(x)
     print(y.shape)

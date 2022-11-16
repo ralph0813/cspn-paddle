@@ -27,15 +27,18 @@ def parse_args():
 @paddle.no_grad()
 def test_vis_epoch(model, data_loader, loss_fn, epoch):
     error_sum = {
-        'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'LG10': 0, 'MAE': 0,
+        'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'MAE': 0,
         'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
         'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
     }
     model.eval()
-    for i, data in tqdm(enumerate(data_loader), desc='Val Epoch: {}'.format(epoch), total=len(data_loader)):
+    tbar = tqdm(enumerate(data_loader), total=len(data_loader))
+    for i, data in tbar:
         inputs = data['rgbd']
         targets = data['depth']
         outputs = model(inputs)
+        loss = loss_fn(outputs, targets).item()
+        tbar.set_description(f'Item {i} | Loss {loss:.4f}')
         error_result = utils.evaluate_error(gt_depth=targets, pred_depth=outputs)
         outputs = outputs.numpy()
         targets = targets.numpy()

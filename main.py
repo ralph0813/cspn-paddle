@@ -9,7 +9,7 @@ from tqdm import tqdm
 import utils
 from dataloader import NyuDepth
 from loss import Wighted_L1_Loss
-from model import get_model_cspn_resnet
+from model import resnet50 as CSPN
 
 
 def parse_args():
@@ -41,7 +41,8 @@ def train_epoch(model, data_loader, loss_fn, optim, epoch):
     }
     model.train()
     loss_sum = 0
-    for i, data in tqdm(enumerate(data_loader), desc='Train Epoch: {}'.format(epoch), total=len(data_loader)):
+    tbar = tqdm(enumerate(data_loader), total=len(data_loader))
+    for i, data in tbar:
         step = epoch * len(data_loader) + i
 
         optim.clear_grad()
@@ -50,7 +51,7 @@ def train_epoch(model, data_loader, loss_fn, optim, epoch):
         outputs = model(inputs)
         loss = loss_fn(outputs, targets)
         loss.backward()
-        loss_sum += loss.numpy().item()
+        loss_sum += loss.item()
         optim.step()
         # print('Epoch: [{0}][{1}/{2}]\tLoss {loss:.4f}\t'.format(epoch, i, len(data_loader), loss=loss.item()))
         error_result = utils.evaluate_error(gt_depth=targets.clone(), pred_depth=outputs.clone())
@@ -65,7 +66,8 @@ def train_epoch(model, data_loader, loss_fn, optim, epoch):
             gt_img = targets[0]  # [1,h,w]
             out_img = utils.get_out_img(pred_img[0], gt_img[0])
             logger.write_image("train", out_img, epoch * len(data_loader) + i)
-
+        error_str = f'Epoch: {epoch}, loss={loss_sum / (i + 1):.4f}'
+        tbar.set_description(error_str)
     for key in error_sum_train.keys():
         error_sum_train[key] /= len(data_loader)
     return error_sum_train, loss_sum / len(data_loader)
@@ -78,13 +80,16 @@ def val_epoch(model, data_loader, loss_fn, epoch):
         'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
         'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
     }
+    loss_sum = 0
     model.eval()
-    for i, data in tqdm(enumerate(data_loader), desc='Val Epoch: {}'.format(epoch), total=len(data_loader)):
+    tbar = tqdm(enumerate(data_loader), total=len(data_loader))
+    for i, data in tbar:
         step = epoch * len(data_loader) + i
         inputs = data['rgbd']
         targets = data['depth']
         outputs = model(inputs)
-        # loss = loss_fn(outputs, targets)
+        loss = loss_fn(outputs, targets)
+        loss_sum += loss.item()
         error_result = utils.evaluate_error(gt_depth=targets, pred_depth=outputs)
 
         pred_img = outputs[0]  # [1,h,w]
@@ -96,6 +101,8 @@ def val_epoch(model, data_loader, loss_fn, epoch):
         for key in error_sum.keys():
             error_sum[key] += error_result[key]
 
+        error_str = f'Epoch: {epoch}, loss={loss_sum / (i + 1):.4f}'
+        tbar.set_description(error_str)
     for key in error_sum.keys():
         error_sum[key] /= len(data_loader)
     return error_sum
@@ -109,7 +116,7 @@ def train(args):
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
     # define model
-    model = get_model_cspn_resnet()
+    model = CSPN()
     model_named_params = [p for _, p in model.named_parameters() if not p.stop_gradient]
     # define loss
     lose_fn = Wighted_L1_Loss()
@@ -170,17 +177,17 @@ def train(args):
             'val_metrics': val_metrics,
         }
 
-        if val_metrics['ABS_REL'] < best_error['ABS_REL']:
+        if val_metrics['MSE'] < best_error['MSE']:
             best_error = val_metrics
             is_best = True
         else:
             is_best = False
 
         if epoch % args.interval == 0:
-            paddle.save(state, f"checkpoint_{epoch}.pdparams")
+            paddle.save(state, os.path.join(args.save_path, f"checkpoint_{epoch}.pdparams"))
             print(f"save model at epoch {epoch}")
         if is_best:
-            paddle.save(state, "model_best.pdparams")
+            paddle.save(state, os.path.join(args.save_path, "weights/model_best.pdparams"))
             print(f"save best model at epoch {epoch} with val_metrics\n{val_metrics}")
 
 

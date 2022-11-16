@@ -1,1 +1,1 @@
-from .cspn_model import get_model_cspn_resnet
+from .cspn_model import resnet18, resnet50, resnet101, resnet151
