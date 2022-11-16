@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--root', type=str, default='./data/nyudepth_hdf5', help='data root')
     parser.add_argument('--device', type=str, default='cpu', help='specify gpu device')
     parser.add_argument('--out_path', type=str, default='out/', help='path to save the images')
-    parser.add_argument('--pretrain', type=str, default='./checkpoints/model_best.pdparams',
+    parser.add_argument('--pretrain', type=str, default='./weights/model_best.pdparams',
                         help='path to load the pretrain model')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
 
@@ -45,7 +45,7 @@ def test_vis_epoch(model, data_loader, loss_fn, epoch):
 
         out_img = utils.get_out_img(pred_img[0], gt_img[0])
         cv2.imwrite(f'out/result_{i}.png', out_img)
-        logger.write_image(epoch * len(data_loader) + i, out_img, "val")
+        logger.write_image("val", out_img, epoch * len(data_loader) + i)
 
         for key in error_sum.keys():
             error_sum[key] += error_result[key]
@@ -68,7 +68,8 @@ def main(args):
 
     model = get_model_cspn_resnet()
     if args.pretrain and os.path.exists(args.pretrain):
-        model.set_state_dict(paddle.load(args.pretrain)['model'])
+        params = paddle.load(args.pretrain, return_numpy=True)
+        model.set_state_dict(params['model'])
         print(f'load model from {args.pretrain}')
 
     lose_fn = Wighted_L1_Loss()

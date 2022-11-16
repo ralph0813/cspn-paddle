@@ -43,13 +43,6 @@ def evaluate_error(gt_depth, pred_depth):
     return error
 
 
-def save_checkpoint(state, is_best, epoch, output_directory):
-    checkpoint_filename = os.path.join(output_directory, f'checkpoint_{epoch}.pdparams')
-    paddle.save(state, checkpoint_filename)
-    if is_best:
-        best_filename = os.path.join(output_directory, 'model_best.pdparams')
-        shutil.copyfile(checkpoint_filename, best_filename)
-
 
 class Logger:
     def __init__(self, log_dir=None):

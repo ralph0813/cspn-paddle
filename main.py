@@ -138,7 +138,7 @@ def train(args):
     }
     if args.pretrain and os.path.exists(args.pretrain):
         try:
-            checkpoints = paddle.load(args.pretrain)
+            checkpoints = paddle.load(args.pretrain, return_numpy=True)
             model.set_state_dict(checkpoints['model'])
             optim.set_state_dict(checkpoints['optimizer'])
             lr_scheduler.set_state_dict(checkpoints['lr_scheduler'])
@@ -158,21 +158,28 @@ def train(args):
         logger.write_log(epoch, train_metrics, "train_epoch")
         logger.write_log(epoch, val_metrics, "val_epoch")
 
-        is_best = False
+        state = {
+            'args': args,
+            'epoch': epoch,
+            'model': model.state_dict(),
+            'optimizer': optim.state_dict(),
+            'lr_scheduler': lr_scheduler.state_dict(),
+            'train_metrics': train_metrics,
+            'val_metrics': val_metrics,
+        }
+
         if val_metrics['ABS_REL'] < best_error['ABS_REL']:
             best_error = val_metrics
             is_best = True
-        if epoch % args.interval == 0 or is_best:
-            utils.save_checkpoint({
-                'args': args,
-                'epoch': epoch,
-                'model': model.state_dict(),
-                'optimizer': optim.state_dict(),
-                'lr_scheduler': lr_scheduler.state_dict(),
-                'train_metrics': train_metrics,
-                'val_metrics': val_metrics,
-            }, is_best, epoch, args.save_path)
+        else:
+            is_best = False
+
+        if epoch % args.interval == 0:
+            paddle.save(state, f"checkpoint_{epoch}.pdparams")
             print(f"save model at epoch {epoch}")
+        if is_best:
+            paddle.save(state, "model_best.pdparams")
+            print(f"save best model at epoch {epoch} with val_metrics\n{val_metrics}")
 
 
 if __name__ == '__main__':
