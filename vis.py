@@ -71,6 +71,7 @@ def main(args):
         params = paddle.load(args.pretrain, return_numpy=True)
         model.set_state_dict(params['model'])
         print(f'load model from {args.pretrain}')
+        print(params['epoch'], params['val_metrics'])
 
     lose_fn = Wighted_L1_Loss()
     val_metrics = test_vis_epoch(model, val_loader, lose_fn, 0)

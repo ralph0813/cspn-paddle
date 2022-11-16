@@ -35,28 +35,30 @@ def parse_args():
 
 def train_epoch(model, data_loader, loss_fn, optim, epoch):
     error_sum_train = {
-        'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'LG10': 0, 'MAE': 0,
+        'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'MAE': 0,
         'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
         'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
     }
     model.train()
     loss_sum = 0
     for i, data in tqdm(enumerate(data_loader), desc='Train Epoch: {}'.format(epoch), total=len(data_loader)):
+        step = epoch * len(data_loader) + i
+
         optim.clear_grad()
         inputs = data['rgbd']
         targets = data['depth']
         outputs = model(inputs)
         loss = loss_fn(outputs, targets)
         loss.backward()
-        loss_sum += loss.numpy()
+        loss_sum += loss.numpy().item()
         optim.step()
         # print('Epoch: [{0}][{1}/{2}]\tLoss {loss:.4f}\t'.format(epoch, i, len(data_loader), loss=loss.item()))
         error_result = utils.evaluate_error(gt_depth=targets.clone(), pred_depth=outputs.clone())
         for key in error_sum_train.keys():
             error_sum_train[key] += error_result[key]
 
-        logger.write_log(epoch * len(data_loader) + i, error_result, "train")
-        logger.add_scalar('train/learning_rate', optim.get_lr(), epoch * len(data_loader) + i)
+        logger.write_log(step, error_result, "train")
+        logger.add_scalar('train/learning_rate', optim.get_lr(), step)
 
         if i % 100 == 0:
             pred_img = outputs[0]  # [1,h,w]
@@ -72,12 +74,13 @@ def train_epoch(model, data_loader, loss_fn, optim, epoch):
 @paddle.no_grad()
 def val_epoch(model, data_loader, loss_fn, epoch):
     error_sum = {
-        'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'LG10': 0, 'MAE': 0,
+        'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'MAE': 0,
         'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
         'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
     }
     model.eval()
     for i, data in tqdm(enumerate(data_loader), desc='Val Epoch: {}'.format(epoch), total=len(data_loader)):
+        step = epoch * len(data_loader) + i
         inputs = data['rgbd']
         targets = data['depth']
         outputs = model(inputs)
@@ -87,12 +90,11 @@ def val_epoch(model, data_loader, loss_fn, epoch):
         pred_img = outputs[0]  # [1,h,w]
         gt_img = targets[0]  # [1,h,w]
         out_img = utils.get_out_img(pred_img[0], gt_img[0])
-        logger.write_image("val", out_img, epoch * len(data_loader) + i)
+        logger.write_image("val", out_img, step)
+        logger.write_log(step, error_result, "val")
 
         for key in error_sum.keys():
             error_sum[key] += error_result[key]
-
-        logger.write_log(epoch * len(data_loader) + i, error_result, "val")
 
     for key in error_sum.keys():
         error_sum[key] /= len(data_loader)
@@ -131,7 +133,7 @@ def train(args):
     # load pretrain model
     start_epoch = 0
     best_error = {
-        'MSE': float('inf'), 'RMSE': float('inf'), 'ABS_REL': float('inf'), 'LG10': float('inf'),
+        'MSE': float('inf'), 'RMSE': float('inf'), 'ABS_REL': float('inf'),
         'MAE': float('inf'),
         'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
         'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0
@@ -142,7 +144,7 @@ def train(args):
             model.set_state_dict(checkpoints['model'])
             optim.set_state_dict(checkpoints['optimizer'])
             lr_scheduler.set_state_dict(checkpoints['lr_scheduler'])
-            start_epoch = checkpoints['epoch']
+            start_epoch = checkpoints['epoch'] + 1
             best_error = checkpoints['val_metrics']
             print(f'load pretrain model from {args.pretrain}')
         except Exception as e:

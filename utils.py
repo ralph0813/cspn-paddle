@@ -16,7 +16,7 @@ def max_of_two(y_over_z, z_over_y):
 def evaluate_error(gt_depth, pred_depth):
     # for numerical stability
     depth_mask = gt_depth > 0.0001
-    error = {'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'LG10': 0, 'MAE': 0,
+    error = {'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'MAE': 0,
              'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
              'DELTA1.25': 0, 'DELTA1.25^2': 0, 'DELTA1.25^3': 0,
              }
@@ -40,6 +40,9 @@ def evaluate_error(gt_depth, pred_depth):
         error['DELTA1.25'] = paddle.sum(max_ratio < 1.25).numpy() / float(n_valid_element)
         error['DELTA1.25^2'] = paddle.sum(max_ratio < 1.25 ** 2).numpy() / float(n_valid_element)
         error['DELTA1.25^3'] = paddle.sum(max_ratio < 1.25 ** 3).numpy() / float(n_valid_element)
+
+    for key in error.keys():
+        error[key] = error[key].item()
     return error
 
 
@@ -54,9 +57,9 @@ class Logger:
             os.makedirs(log_dir)
         self.writer = LogWriter(logdir=log_dir)
 
-    def write_log(self, epoch, metrics, mode):
+    def write_log(self, step, metrics, mode):
         for key in metrics.keys():
-            self.writer.add_scalar(f'{mode}/{key}', metrics[key], epoch)
+            self.writer.add_scalar(f'{mode}/{key}', metrics[key], step)
 
     def add_scalar(self, tag, value, step, walltime=None):
         self.writer.add_scalar(tag, value, step, walltime)
