@@ -18,7 +18,6 @@ class NyuDepth(paddle.io.Dataset):
         self.split = split
         self.samples = pd.read_csv(os.path.join(root_dir, csv_file))
         self.n_sample = n_sample
-        self._s = np.random.uniform(1.0, 1.5)
 
     def __len__(self):
         return len(self.samples)
@@ -28,20 +27,24 @@ class NyuDepth(paddle.io.Dataset):
         rgb_h5, depth_h5 = self.load_h5(file_name)
         rgb_image = Image.fromarray(rgb_h5, mode='RGB')
         depth_image = Image.fromarray(depth_h5.astype('float32'), mode='F')
-        rgb_transform, depth_transform = self.get_transform()
+
+        if self.split == 'train' and np.random.uniform() < 0.5:
+            rgb_image = rgb_image.transpose(Image.FLIP_LEFT_RIGHT)
+            depth_image = depth_image.transpose(Image.FLIP_LEFT_RIGHT)
+
+        rgb_transform, depth_transform, _s = self.get_transform()
         rgb_image = rgb_transform(rgb_image)
         depth_image = depth_transform(depth_image)
-        depth_image = depth_image / self._s
+        depth_image = depth_image / _s
         sparse_image = self.createSparseDepthImage(depth_image, self.n_sample)
         rgbd_image = paddle.concat((rgb_image, sparse_image), 0)
-        sample = {'rgbd': rgbd_image, 'depth': depth_image}
-        return sample
+        return {'rgbd': rgbd_image, 'depth': depth_image}
 
     def get_transform(self):
-        s = int(240 * self._s)
-        degree = np.random.uniform(-5.0, 5.0)
-
         if self.split == 'train':
+            _s = np.random.uniform(1.0, 1.5)
+            s = int(240 * _s)
+            degree = np.random.uniform(-5.0, 5.0)
             rgb_transform = transforms.Compose([
                 transforms.Resize(size=s),
                 Rotation(degree),
@@ -56,7 +59,7 @@ class NyuDepth(paddle.io.Dataset):
                 transforms.CenterCrop(size=(228, 304)),
                 transforms.ToTensor(),
             ])
-            return rgb_transform, depth_transform
+            return rgb_transform, depth_transform, _s
         else:
             rgb_transform = transforms.Compose([
                 transforms.Resize(size=(228, 304)),
@@ -67,7 +70,7 @@ class NyuDepth(paddle.io.Dataset):
                 transforms.Resize(size=(228, 304)),
                 transforms.ToTensor(),
             ])
-            return rgb_transform, depth_transform
+            return rgb_transform, depth_transform, 1.0
 
     def load_h5(self, h5_filename):
         f = h5py.File(h5_filename, 'r')
@@ -83,13 +86,13 @@ class NyuDepth(paddle.io.Dataset):
         # #        print('===> number of total valid pixels is: %d\n' % n_valid_pixels)
         perc_sample = n_sample / n_pixels
         random_mask = paddle.bernoulli(paddle.ones_like(random_mask) * perc_sample)
-        sparse_depth = depth_image * random_mask
+        sparse_depth = paddle.multiply(depth_image, random_mask)
         return sparse_depth
 
 
 if __name__ == '__main__':
-    dataset = NyuDepth(root_dir='../data/nyudepth_hdf5', split='train',
-                       csv_file='train.csv')
+    paddle.device.set_device('cpu')
+    dataset = NyuDepth(root_dir='../data/nyudepth_hdf5', split='train', csv_file='train.csv')
     sample = dataset[0]
     print(len(dataset))
     print(sample['rgbd'].shape)

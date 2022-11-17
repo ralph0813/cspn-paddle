@@ -20,7 +20,6 @@ def parse_args():
     parser.add_argument('--pretrain', type=str, default='./weights/model_best.pdparams',
                         help='path to load the pretrain model')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
-
     return parser.parse_args()
 
 
@@ -78,6 +77,7 @@ def main(args):
 
     lose_fn = Wighted_L1_Loss()
     val_metrics = test_vis_epoch(model, val_loader, lose_fn, 0)
+    print(val_metrics)
 
 
 if __name__ == '__main__':

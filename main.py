@@ -135,7 +135,7 @@ def train(args):
         weight_decay=args.weight_decay,
         momentum=args.momentum,
         use_nesterov=args.nesterov,
-        # dampening=args.dampening
+        # dampening=args.dampening ###paddle not support
     )
     # load pretrain model
     start_epoch = 0
@@ -150,7 +150,7 @@ def train(args):
             checkpoints = paddle.load(args.pretrain, return_numpy=True)
             model.set_state_dict(checkpoints['model'])
             optim.set_state_dict(checkpoints['optimizer'])
-            lr_scheduler.set_state_dict(checkpoints['lr_scheduler'])
+            # lr_scheduler.set_state_dict(checkpoints['lr_scheduler'])
             start_epoch = checkpoints['epoch'] + 1
             best_error = checkpoints['val_metrics']
             print(f'load pretrain model from {args.pretrain}')
