@@ -164,6 +164,7 @@ def train(args):
 
         lr_scheduler.step(train_loss)
 
+        logger.add_scalar('train/learning_rate', optim.get_lr(), step)
         logger.write_log(epoch, train_metrics, "train_epoch")
         logger.write_log(epoch, val_metrics, "val_epoch")
 

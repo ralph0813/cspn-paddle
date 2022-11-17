@@ -62,12 +62,14 @@ class NyuDepth(paddle.io.Dataset):
             return rgb_transform, depth_transform, _s
         else:
             rgb_transform = transforms.Compose([
-                transforms.Resize(size=(228, 304)),
+                transforms.Resize(size=240),
+                transforms.CenterCrop(size=(228, 304)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
             depth_transform = transforms.Compose([
-                transforms.Resize(size=(228, 304)),
+                transforms.Resize(size=240),
+                transforms.CenterCrop(size=(228, 304)),
                 transforms.ToTensor(),
             ])
             return rgb_transform, depth_transform, 1.0
