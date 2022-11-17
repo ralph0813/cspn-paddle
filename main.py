@@ -150,7 +150,7 @@ def train(args):
             checkpoints = paddle.load(args.pretrain, return_numpy=True)
             model.set_state_dict(checkpoints['model'])
             optim.set_state_dict(checkpoints['optimizer'])
-            # lr_scheduler.set_state_dict(checkpoints['lr_scheduler'])
+            lr_scheduler.set_state_dict(checkpoints['lr_scheduler'])
             start_epoch = checkpoints['epoch'] + 1
             best_error = checkpoints['val_metrics']
             print(f'load pretrain model from {args.pretrain}')
@@ -187,7 +187,7 @@ def train(args):
             paddle.save(state, os.path.join(args.save_path, f"checkpoint_{epoch}.pdparams"))
             print(f"save model at epoch {epoch}")
         if is_best:
-            paddle.save(state, os.path.join(args.save_path, "weights/model_best.pdparams"))
+            paddle.save(state, os.path.join(args.save_path, "model_best.pdparams"))
             print(f"save best model at epoch {epoch} with val_metrics\n{val_metrics}")
 
 
