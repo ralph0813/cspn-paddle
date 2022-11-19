@@ -171,7 +171,7 @@ def train(args):
         state = {
             'args': args,
             'epoch': epoch,
-            'model': model.pd_state_dict(),
+            'model': model.state_dict(),
             'optimizer': optim.state_dict(),
             'lr_scheduler': lr_scheduler.state_dict(),
             'train_metrics': train_metrics,

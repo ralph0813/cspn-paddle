@@ -8,7 +8,7 @@ def convert():
     paddle.device.set_device('cpu')
 
     torch_path = "weights/pytorch/best_model.pth"
-    paddle_path = "weights/model_pytorch.pdparams"
+    paddle_path = "weights/model_torch.pdparams"
 
     torch_ckpt = torch.load(torch_path, map_location='cpu')
     pd_model = resnet50()
