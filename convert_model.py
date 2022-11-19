@@ -12,6 +12,7 @@ def convert():
 
     torch_ckpt = torch.load(torch_path, map_location='cpu')
     pd_model = resnet50()
+    pd_model.eval()
 
     pd_state_dict = pd_model.state_dict()
     pd_list = []

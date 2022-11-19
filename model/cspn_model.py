@@ -187,7 +187,7 @@ class ResNet(nn.Layer):
     def __init__(self, block, layers, up_proj_block, cspn_config=None):
         super().__init__()
         self.inplanes = 64
-        cspn_config_default = {'step': 24, 'kernel': 3, 'norm_type': '8sum'}
+        cspn_config_default = {'step': 24, 'kernel': 3, 'norm_type': '8sum_abs'}
         if not (cspn_config is None):
             cspn_config_default.update(cspn_config)
         print(cspn_config_default)
@@ -289,7 +289,7 @@ def resnet18():
 
 
 def resnet50():
-    return ResNet(Bottleneck, [3, 4, 6, 3], UpProj_Block)
+    return ResNet(Bottleneck, [3, 4, 6, 3], UpProj_Block, {'norm_type': '8sum_abs'})
 
 
 def resnet101():
