@@ -30,18 +30,12 @@ class BatchNorm2D(nn.BatchNorm2D):
 class UnPool(nn.Layer):
     def __init__(self, num_channels, stride=2):
         super().__init__()
-
         self.num_channels = num_channels
         self.stride = stride
-
         # create kernel [1, 0; 0, 0]
         kernel = paddle.zeros((num_channels, 1, stride, stride), dtype='float32')
         kernel[:, :, 0, 0] = 1
-        self.weights = paddle.create_parameter([num_channels, 1, stride, stride], dtype='float32')
-        self.weights.set_value(kernel)
-        # self.weights = paddle.zeros((num_channels, 1, stride, stride), dtype='float32')
-        # self.weights[:, :, 0, 0] = 1
-        # self.weights.stop_gradient = False
+        self.weights = kernel
 
     def forward(self, x):
         return F.conv2d_transpose(x, self.weights, stride=self.stride, groups=self.num_channels)
@@ -315,5 +309,6 @@ if __name__ == '__main__':
     x = paddle.randn((8, 4, 228, 304))
     y = model(x)
     print(y.shape)
-    print(paddle.summary(model, input_size=(-1, 4, 228, 304)))
-    print('==> ResNet50 model is built successfully!')
+    # print(paddle.summary(model, input_size=(-1, 4, 228, 304)))
+    for key in model.state_dict().keys():
+        print(key)

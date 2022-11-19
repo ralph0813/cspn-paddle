@@ -21,14 +21,14 @@ def parse_args():
     parser.add_argument('--epoch', default=40, type=int, help='number of epoch in training')
     parser.add_argument('--interval', default=1, type=float, help='interval of save model')
     parser.add_argument('--n_sample', default=500, type=float, help='learning rate in training')
-    parser.add_argument('--lr', default=1e-3, type=float, help='learning rate in training')
+    parser.add_argument('--lr', default=1e-4, type=float, help='learning rate in training')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum in training')
     parser.add_argument('--dampening', default=0.0, type=float, help='dampening for momentum')
     parser.add_argument('--nesterov', '-n', action='store_true', help='enables Nesterov momentum')
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay in training')
     parser.add_argument('--save_path', type=str, default='weights/', help='path to save the checkpoints')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
-    parser.add_argument('--pretrain', type=str, default='weights/model_best.pdparams',
+    parser.add_argument('--pretrain', type=str, default='weights/model_torch.pdparams',
                         help='path to load the pretrain model')
     return parser.parse_args()
 
@@ -171,7 +171,7 @@ def train(args):
         state = {
             'args': args,
             'epoch': epoch,
-            'model': model.state_dict(),
+            'model': model.pd_state_dict(),
             'optimizer': optim.state_dict(),
             'lr_scheduler': lr_scheduler.state_dict(),
             'train_metrics': train_metrics,

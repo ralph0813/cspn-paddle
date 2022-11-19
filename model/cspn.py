@@ -28,21 +28,19 @@ class Affinity_Propagate(nn.Layer):
 
         self.in_feature = 1
         self.out_feature = 1
-
-    def forward(self, guidance, blur_depth, sparse_depth=None):
-
         self.sum_conv = nn.Conv3D(in_channels=8,
                                   out_channels=1,
                                   kernel_size=(1, 1, 1),
                                   stride=1,
                                   padding=0,
                                   bias_attr=False)
-
         self.sum_conv.weight = paddle.create_parameter(
-            [1, 8, 1, 1, 1], dtype='float32', default_initializer=nn.initializer.Constant(1.0))
-
+            [1, 8, 1, 1, 1], dtype='float32', default_initializer=nn.initializer.Constant(1))
         for param in self.sum_conv.parameters():
+            param.stop_gradient = True
             param.requires_grad = False
+
+    def forward(self, guidance, blur_depth, sparse_depth=None):
 
         gate_wb, gate_sum = self.affinity_normalization(guidance)
 

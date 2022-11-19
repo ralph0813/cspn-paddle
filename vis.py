@@ -15,9 +15,9 @@ from model.cspn_model import get_model_cspn_resnet
 def parse_args():
     parser = argparse.ArgumentParser('training')
     parser.add_argument('--root', type=str, default='./data/nyudepth_hdf5', help='data root')
-    parser.add_argument('--device', type=str, default='cpu', help='specify gpu device')
+    parser.add_argument('--device', type=str, default='gpu', help='specify gpu device')
     parser.add_argument('--out_path', type=str, default='out/', help='path to save the images')
-    parser.add_argument('--pretrain', type=str, default='./weights/model_best.pdparams',
+    parser.add_argument('--pretrain', type=str, default='./weights/model_torch.pdparams',
                         help='path to load the pretrain model')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
     return parser.parse_args()
@@ -50,7 +50,7 @@ def test_vis_epoch(model, data_loader, loss_fn, epoch):
         logger.write_image("val", out_img, epoch * len(data_loader) + i)
 
         for key in error_sum.keys():
-            error_sum[key] += error_result[key]
+            error_sum[key] += error_result[key][0]
 
         logger.write_log(epoch * len(data_loader) + i, error_result, "test")
 
@@ -73,10 +73,12 @@ def main(args):
         params = paddle.load(args.pretrain, return_numpy=True)
         model.set_state_dict(params['model'])
         print(f'load model from {args.pretrain}')
-        print(params['epoch'], params['val_metrics'])
+        # print(params['epoch'], params['val_metrics'])
 
     lose_fn = Wighted_L1_Loss()
     val_metrics = test_vis_epoch(model, val_loader, lose_fn, 0)
+    for key in val_metrics.keys():
+        print(f'{key}: {val_metrics[key]:.4f}')
     print(val_metrics)
 
 
