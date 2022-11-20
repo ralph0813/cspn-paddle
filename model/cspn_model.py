@@ -311,8 +311,8 @@ def resnet151():
     return ResNet(Bottleneck, [3, 8, 36, 3], UpProj_Block)
 
 
-def get_model_cspn_resnet():
-    return resnet50(pretrained=True)
+def get_model_cspn_resnet(pretrained=True):
+    return resnet50(pretrained=pretrained)
 
 
 if __name__ == '__main__':

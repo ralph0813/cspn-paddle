@@ -1,16 +1,9 @@
 import os
-import shutil
-from typing import Dict, Union, Any
 
 import cv2
 import numpy as np
 import paddle
 import skimage
-
-
-@paddle.no_grad()
-def max_of_two(y_over_z, z_over_y):
-    return paddle.max((y_over_z, z_over_y))
 
 
 @paddle.no_grad()

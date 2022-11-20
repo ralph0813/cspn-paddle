@@ -68,12 +68,13 @@ def main(args):
     val_set = NyuDepth(args.root, 'test', 'val.csv')
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, num_workers=1)
 
-    model = get_model_cspn_resnet()
+    model = get_model_cspn_resnet(pretrained=False)
     if args.pretrain and os.path.exists(args.pretrain):
         params = paddle.load(args.pretrain, return_numpy=True)
         model.set_state_dict(params['model'])
         print(f'load model from {args.pretrain}')
-        # print(params['epoch'], params['val_metrics'])
+    else:
+        raise RuntimeError(f'no model found at {args.pretrain}')
 
     lose_fn = Wighted_L1_Loss()
     val_metrics = test_vis_epoch(model, val_loader, lose_fn, 0)
