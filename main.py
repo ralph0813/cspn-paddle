@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay in training')
     parser.add_argument('--save_path', type=str, default='weights/', help='path to save the checkpoints')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
-    parser.add_argument('--pretrain', type=str, default='weights/model_torch.pdparams',
+    parser.add_argument('--pretrain', type=str, default='weights/model_best.pdparams',
                         help='path to load the pretrain model')
     return parser.parse_args()
 

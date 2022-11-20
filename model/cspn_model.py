@@ -288,8 +288,19 @@ def resnet18():
     return ResNet(Bottleneck, [2, 2, 2, 2], UpProj_Block)
 
 
-def resnet50():
-    return ResNet(Bottleneck, [3, 4, 6, 3], UpProj_Block, {'norm_type': '8sum_abs'})
+def resnet50(pretrained=False):
+    model = ResNet(Bottleneck, [3, 4, 6, 3], UpProj_Block, {'norm_type': '8sum_abs'})
+
+    if pretrained:
+        model_dict = model.state_dict()
+        from paddle.vision.models import resnet50 as resnet50_pretrained
+        pretrained_model = resnet50_pretrained(pretrained=True)
+        pretrained_model_dict = pretrained_model.state_dict()
+        model_dict = {k: v for k, v in pretrained_model_dict.items() if k in model_dict}
+        model_dict.update(model_dict)
+        print('Load pretrained model from resnet50.')
+
+    return model
 
 
 def resnet101():
@@ -301,7 +312,7 @@ def resnet151():
 
 
 def get_model_cspn_resnet():
-    return resnet50()
+    return resnet50(pretrained=True)
 
 
 if __name__ == '__main__':
