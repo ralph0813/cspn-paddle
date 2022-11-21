@@ -9,6 +9,7 @@ from tqdm import tqdm
 import utils
 from dataloader import NyuDepth
 from loss import Wighted_L1_Loss
+from lr_wrappers import WarmupLR
 from model import resnet50 as CSPN
 
 
@@ -21,7 +22,7 @@ def parse_args():
     parser.add_argument('--epoch', default=40, type=int, help='number of epoch in training')
     parser.add_argument('--interval', default=1, type=float, help='interval of save model')
     parser.add_argument('--n_sample', default=500, type=float, help='learning rate in training')
-    parser.add_argument('--lr', default=1e-4, type=float, help='learning rate in training')
+    parser.add_argument('--lr', default=1e-2, type=float, help='learning rate in training')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum in training')
     parser.add_argument('--dampening', default=0.0, type=float, help='dampening for momentum')
     parser.add_argument('--nesterov', '-n', action='store_true', help='enables Nesterov momentum')
@@ -30,10 +31,11 @@ def parse_args():
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
     parser.add_argument('--pretrain', type=str, default='weights/model_best.pdparams',
                         help='path to load the pretrain model')
+    parser.add_argument('--resnet_pretrain', '-r', action='store_true', help='use resnet pretrain model')
     return parser.parse_args()
 
 
-def train_epoch(model, data_loader, loss_fn, optim, epoch):
+def train_epoch(model, data_loader, loss_fn, optim, epoch, lr_scheduler):
     error_sum_train = {
         'MSE': 0, 'RMSE': 0, 'ABS_REL': 0, 'MAE': 0,
         'DELTA1.02': 0, 'DELTA1.05': 0, 'DELTA1.10': 0,
@@ -52,7 +54,9 @@ def train_epoch(model, data_loader, loss_fn, optim, epoch):
         loss = loss_fn(outputs, targets)
         loss.backward()
         loss_sum += loss.item()
+        lr_scheduler.warmup_step()
         optim.step()
+
         # print('Epoch: [{0}][{1}/{2}]\tLoss {loss:.4f}\t'.format(epoch, i, len(data_loader), loss=loss.item()))
         error_result = utils.evaluate_error(gt_depth=targets.clone(), pred_depth=outputs.clone())
         for key in error_sum_train.keys():
@@ -66,8 +70,10 @@ def train_epoch(model, data_loader, loss_fn, optim, epoch):
             gt_img = targets[0]  # [1,h,w]
             out_img = utils.get_out_img(pred_img[0], gt_img[0])
             logger.write_image("train", out_img, epoch * len(data_loader) + i)
-        error_str = f'Epoch: {epoch}, loss={loss_sum / (i + 1):.4f}'
+        RMSE = float(error_sum_train['RMSE'] / (i + 1))
+        error_str = f'Epoch: {epoch}, RMSE={RMSE:.4f}, lr={optim.get_lr():.4f}'
         tbar.set_description(error_str)
+
     for key in error_sum_train.keys():
         error_sum_train[key] /= len(data_loader)
     return error_sum_train, loss_sum / len(data_loader)
@@ -100,8 +106,8 @@ def val_epoch(model, data_loader, loss_fn, epoch):
 
         for key in error_sum.keys():
             error_sum[key] += error_result[key]
-
-        error_str = f'Epoch: {epoch}, loss={loss_sum / (i + 1):.4f}'
+        RMSE = error_sum['RMSE'] / (i + 1)
+        error_str = f'Epoch: {epoch}, loss={RMSE:.4f}'
         tbar.set_description(error_str)
     for key in error_sum.keys():
         error_sum[key] /= len(data_loader)
@@ -116,11 +122,11 @@ def train(args):
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
     # define model
-    model = CSPN()
+    model = CSPN(pretrained=args.resnet_pretrain)
     model_named_params = [p for _, p in model.named_parameters() if not p.stop_gradient]
     # define loss
     lose_fn = Wighted_L1_Loss()
-    # define lr_scheduler and optimizer
+    # define lr_scheduler
     lr_scheduler = optimizer.lr.ReduceOnPlateau(
         learning_rate=args.lr,
         mode='min',
@@ -129,6 +135,9 @@ def train(args):
         min_lr=0.000001,
         epsilon=1e-04
     )
+    # add warmup
+    lr_scheduler = WarmupLR(lr_scheduler, init_lr=0., num_warmup=100, warmup_strategy='cos')
+    # define optimizer
     optim = optimizer.Momentum(
         learning_rate=lr_scheduler,
         parameters=model_named_params,
@@ -159,7 +168,7 @@ def train(args):
 
     # train
     for epoch in range(start_epoch, args.epoch):
-        train_metrics, train_loss = train_epoch(model, train_loader, lose_fn, optim, epoch)
+        train_metrics, train_loss = train_epoch(model, train_loader, lose_fn, optim, epoch, lr_scheduler)
         val_metrics = val_epoch(model, val_loader, lose_fn, epoch)
 
         lr_scheduler.step(train_loss)
