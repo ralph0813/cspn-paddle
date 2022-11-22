@@ -76,7 +76,7 @@ def train_epoch(model, data_loader, loss_fn, optim, epoch, lr_scheduler):
 
     for key in error_sum_train.keys():
         error_sum_train[key] /= len(data_loader)
-    return error_sum_train, loss_sum / len(data_loader)
+    return error_sum_train, float(error_sum_train['MAE'] / len(data_loader))
 
 
 @paddle.no_grad()
@@ -168,10 +168,10 @@ def train(args):
 
     # train
     for epoch in range(start_epoch, args.epoch):
-        train_metrics, train_loss = train_epoch(model, train_loader, lose_fn, optim, epoch, lr_scheduler)
+        train_metrics, train_mae = train_epoch(model, train_loader, lose_fn, optim, epoch, lr_scheduler)
         val_metrics = val_epoch(model, val_loader, lose_fn, epoch)
 
-        lr_scheduler.step(train_loss)
+        lr_scheduler.step(train_mae)
 
         logger.add_scalar('train_epoch/learning_rate', optim.get_lr(), epoch)
         logger.write_log(epoch, train_metrics, "train_epoch")
