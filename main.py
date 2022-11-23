@@ -134,7 +134,9 @@ def train(args):
         factor=0.1,
         patience=3,
         min_lr=0.000001,
-        epsilon=1e-04
+        epsilon=1e-4,
+        threshold=1e-2,
+        threshold_mode='rel',
     )
     # add warmup
     lr_scheduler = WarmupLR(lr_scheduler, init_lr=0., num_warmup=100, warmup_strategy='cos')
