@@ -117,3 +117,6 @@ class WarmupLR(LRScheduler):
             lr = self.get_lr()
             self._scheduler.__dict__['last_lr'] = lr
             self._step_count += 1
+
+    def state_keys(self):
+        self.keys = []

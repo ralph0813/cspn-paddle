@@ -109,6 +109,7 @@ def val_epoch(model, data_loader, loss_fn, epoch):
         RMSE = float(error_sum['RMSE'] / (i + 1))
         error_str = f'Epoch: {epoch}, loss={RMSE:.4f}'
         tbar.set_description(error_str)
+
     for key in error_sum.keys():
         error_sum[key] /= len(data_loader)
     return error_sum
