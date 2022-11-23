@@ -7,9 +7,9 @@ from paddle.io import DataLoader
 from tqdm import tqdm
 
 import utils
+from FixedLRScheduler import FixedLRScheduler
 from dataloader import NyuDepth
 from loss import Wighted_L1_Loss
-from lr_wrappers import WarmupLR
 from model import resnet50 as CSPN
 
 
@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay in training')
     parser.add_argument('--save_path', type=str, default='weights/', help='path to save the checkpoints')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
-    parser.add_argument('--pretrain', type=str, default='weights/model_best.pdparams',
+    parser.add_argument('--pretrain', type=str, default='weights/checkpoint_0.pdparams',
                         help='path to load the pretrain model')
     parser.add_argument('--resnet_pretrain', '-r', action='store_true', help='use resnet pretrain model')
     return parser.parse_args()
@@ -54,7 +54,7 @@ def train_epoch(model, data_loader, loss_fn, optim, epoch, lr_scheduler):
         loss = loss_fn(outputs, targets)
         loss.backward()
         loss_sum += loss.item()
-        lr_scheduler.warmup_step()
+        lr_scheduler.warmup()
         optim.step()
 
         # print('Epoch: [{0}][{1}/{2}]\tLoss {loss:.4f}\t'.format(epoch, i, len(data_loader), loss=loss.item()))
@@ -109,6 +109,7 @@ def val_epoch(model, data_loader, loss_fn, epoch):
         RMSE = float(error_sum['RMSE'] / (i + 1))
         error_str = f'Epoch: {epoch}, loss={RMSE:.4f}'
         tbar.set_description(error_str)
+
     for key in error_sum.keys():
         error_sum[key] /= len(data_loader)
     return error_sum
@@ -126,17 +127,8 @@ def train(args):
     model_named_params = [p for _, p in model.named_parameters() if not p.stop_gradient]
     # define loss
     lose_fn = Wighted_L1_Loss()
-    # define lr_scheduler
-    lr_scheduler = optimizer.lr.ReduceOnPlateau(
-        learning_rate=args.lr,
-        mode='min',
-        factor=0.1,
-        patience=3,
-        min_lr=0.000001,
-        epsilon=1e-04
-    )
-    # add warmup
-    lr_scheduler = WarmupLR(lr_scheduler, init_lr=0., num_warmup=100, warmup_strategy='cos')
+    # define lr scheduler
+    lr_scheduler = FixedLRScheduler(lr=args.lr, warmup_steps=200)
     # define optimizer
     optim = optimizer.Momentum(
         learning_rate=lr_scheduler,
@@ -171,8 +163,6 @@ def train(args):
         train_metrics, train_mae = train_epoch(model, train_loader, lose_fn, optim, epoch, lr_scheduler)
         val_metrics = val_epoch(model, val_loader, lose_fn, epoch)
 
-        lr_scheduler.step(train_mae)
-
         logger.add_scalar('train_epoch/learning_rate', optim.get_lr(), epoch)
         logger.write_log(epoch, train_metrics, "train_epoch")
         logger.write_log(epoch, val_metrics, "val_epoch")
@@ -199,6 +189,8 @@ def train(args):
         if is_best:
             paddle.save(state, os.path.join(args.save_path, "model_best.pdparams"))
             print(f"save best model at epoch {epoch} with val_metrics\n{val_metrics}")
+
+        lr_scheduler.step(epoch)
 
 
 if __name__ == '__main__':
