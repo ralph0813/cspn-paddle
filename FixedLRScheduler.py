@@ -11,8 +11,9 @@ class FixedLRScheduler(LRScheduler):
         self.warmup()
 
     def step(self, epoch=None):
-        self._cur_epoch += 1 if epoch is None else epoch
+        self._cur_epoch = self._cur_epoch + 1 if epoch is None else epoch
         self.last_lr = self.base_lr * (0.2 ** int(self._cur_epoch / 10))
+        # print(f"{epoch} epoch {self._cur_epoch} lr {self.last_lr}")
 
     def warmup(self):
         if self._current_iter <= self._warmup_steps:
@@ -23,4 +24,4 @@ class FixedLRScheduler(LRScheduler):
         return self.last_lr
 
     def state_keys(self):
-        self.keys = ['last_lr', '_cur_epoch', '_current_iter', '_warmup_steps', '_start_lr']
+        self.keys = ['_cur_epoch', '_current_iter']
