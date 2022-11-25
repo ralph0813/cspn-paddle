@@ -23,9 +23,6 @@ def parse_args():
     parser.add_argument('--interval', default=1, type=float, help='interval of save model')
     parser.add_argument('--n_sample', default=500, type=float, help='learning rate in training')
     parser.add_argument('--lr', default=1e-2, type=float, help='learning rate in training')
-    parser.add_argument('--momentum', default=0.9, type=float, help='momentum in training')
-    parser.add_argument('--dampening', default=0.0, type=float, help='dampening for momentum')
-    parser.add_argument('--nesterov', '-n', action='store_true', help='enables Nesterov momentum')
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay in training')
     parser.add_argument('--save_path', type=str, default='weights/', help='path to save the checkpoints')
     parser.add_argument('--log_dir', type=str, default=None, help='path to save the log')
@@ -131,9 +128,9 @@ def train(args):
     lr_scheduler = optimizer.lr.ReduceOnPlateau(
         learning_rate=args.lr,
         mode='min',
-        factor=0.1,
+        factor=0.2,
         patience=3,
-        min_lr=0.000001,
+        min_lr=1e-5,
         epsilon=1e-4,
         threshold=1e-2,
         threshold_mode='rel',
@@ -141,12 +138,10 @@ def train(args):
     # add warmup
     lr_scheduler = WarmupLR(lr_scheduler, init_lr=0., num_warmup=100, warmup_strategy='cos')
     # define optimizer
-    optim = optimizer.Momentum(
+    optim = optimizer.Adam(
         learning_rate=lr_scheduler,
         parameters=model_named_params,
         weight_decay=args.weight_decay,
-        momentum=args.momentum,
-        use_nesterov=args.nesterov,
         # dampening=args.dampening ###paddle not support
     )
     # load pretrain model

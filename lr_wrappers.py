@@ -119,4 +119,4 @@ class WarmupLR(LRScheduler):
             self._step_count += 1
 
     def state_keys(self):
-        self.keys = []
+        self.keys = ['_step_count']
