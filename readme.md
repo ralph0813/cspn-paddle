@@ -70,7 +70,7 @@ The visualization results are saved in `./out/`.
 The trained models, UNet+CSPN in the paper can be downloaded here:
 
 NYU Depth V2 (Fast Unpool,
-pos): [Paddle model](https://unimelbcloud-my.sharepoint.com/:u:/g/personal/juntaol3_student_unimelb_edu_au/EVZmczSR0zJPtU3hk1F9dgcBSGM-rQ0zsRcMpdBwMYn88w?e=XQjpIj)
+pos): [Paddle model](https://drive.google.com/file/d/1IUi72XE7-_WsEStU2wzwTEGNupWsrEk6/view?usp=sharing)
 
 ## Citation
 
