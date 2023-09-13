@@ -50,7 +50,7 @@ def test_vis_epoch(model, data_loader, loss_fn, epoch):
         logger.write_image("val", out_img, epoch * len(data_loader) + i)
 
         for key in error_sum.keys():
-            error_sum[key] += error_result[key][0]
+            error_sum[key] += error_result[key]
 
         logger.write_log(epoch * len(data_loader) + i, error_result, "test")
 

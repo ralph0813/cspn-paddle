@@ -17,7 +17,7 @@ def parse_args():
     parser = argparse.ArgumentParser('training')
     parser.add_argument('--root', type=str, default='./data/nyudepth_hdf5', help='data root')
     parser.add_argument('--device', type=str, default='gpu', help='specify gpu device')
-    parser.add_argument('--batch_size', type=int, default=8, help='batch size in training')
+    parser.add_argument('--batch_size', type=int, default=16, help='batch size in training')
     parser.add_argument('--num_workers', type=int, default=4, help='num of workers to use')
     parser.add_argument('--epoch', default=40, type=int, help='number of epoch in training')
     parser.add_argument('--interval', default=1, type=float, help='interval of save model')

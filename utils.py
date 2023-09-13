@@ -28,17 +28,20 @@ def evaluate_error(gt_depth, pred_depth):
         y_over_z = paddle.divide(_gt_depth, _pred_depth)
         z_over_y = paddle.divide(_pred_depth, _gt_depth)
         max_ratio = paddle.maximum(y_over_z, z_over_y)
-        error['DELTA1.02'] = paddle.sum(max_ratio < 1.02).numpy() / float(n_valid_element)
-        error['DELTA1.05'] = paddle.sum(max_ratio < 1.05).numpy() / float(n_valid_element)
-        error['DELTA1.10'] = paddle.sum(max_ratio < 1.10).numpy() / float(n_valid_element)
-        error['DELTA1.25'] = paddle.sum(max_ratio < 1.25).numpy() / float(n_valid_element)
-        error['DELTA1.25^2'] = paddle.sum(max_ratio < 1.25 ** 2).numpy() / float(n_valid_element)
-        error['DELTA1.25^3'] = paddle.sum(max_ratio < 1.25 ** 3).numpy() / float(n_valid_element)
+        error['DELTA1.02'] = paddle.sum(max_ratio < 1.02) / float(n_valid_element)
+        error['DELTA1.05'] = paddle.sum(max_ratio < 1.05) / float(n_valid_element)
+        error['DELTA1.10'] = paddle.sum(max_ratio < 1.10) / float(n_valid_element)
+        error['DELTA1.25'] = paddle.sum(max_ratio < 1.25) / float(n_valid_element)
+        error['DELTA1.25^2'] = paddle.sum(max_ratio < 1.25 ** 2) / float(n_valid_element)
+        error['DELTA1.25^3'] = paddle.sum(max_ratio < 1.25 ** 3) / float(n_valid_element)
 
-    error['MSE'] = error['MSE'].numpy()
-    error['RMSE'] = error['RMSE'].numpy()
-    error['ABS_REL'] = error['ABS_REL'].numpy()
-    error['MAE'] = error['MAE'].numpy()
+    error['MSE'] = error['MSE']
+    error['RMSE'] = error['RMSE']
+    error['ABS_REL'] = error['ABS_REL']
+    error['MAE'] = error['MAE']
+
+    for key in error.keys():
+        error[key] = float(error[key])
     return error
 
 

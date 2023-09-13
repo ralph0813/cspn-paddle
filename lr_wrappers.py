@@ -1,21 +1,16 @@
 import math
+
 from paddle.optimizer.lr import LRScheduler
-import paddle.optimizer.lr as lr
 
 
 class WarmupLR(LRScheduler):
-    def __init__(self, scheduler,
-                 init_lr=1e-3,
-                 num_warmup=1,
-                 warmup_strategy='linear'):
-
+    def __init__(self, scheduler, init_lr=1e-3, num_warmup=1, warmup_strategy='linear'):
+        super().__init__()
         self._scheduler = scheduler
         self._init_lr = init_lr
         self._num_warmup = num_warmup
         self._step_count = 0
-
         self._set_warmup_strategy(warmup_strategy)
-
         # save initial learning rate of each param group
         # only useful when each param groups having different learning rate
         self._format_param()
@@ -70,7 +65,6 @@ class WarmupLR(LRScheduler):
             self._set_warmup_strategy(self._warmup_strategy)
 
     def _format_param(self):
-
         try:
             lr = self._scheduler.get_lr()
         except NotImplementedError:
@@ -97,16 +91,14 @@ class WarmupLR(LRScheduler):
         step_num = self._step_count
         # warm up learning rate
         if step_num <= self._num_warmup:
-
             computed_lr = self._warmup_func(
                 self._scheduler.__dict__['warmup_initial_lr'],
                 self._scheduler.__dict__['warmup_max_lr'],
-                step_num / self._num_warmup)
-
+                step_num / self._num_warmup
+            )
             lr = computed_lr
         else:
             lr = self._scheduler.get_lr()
-
         return lr
 
     def step(self, *args):

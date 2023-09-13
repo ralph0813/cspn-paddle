@@ -3,7 +3,6 @@ import paddle.nn as nn
 
 
 class Affinity_Propagate(nn.Layer):
-
     def __init__(self,
                  prop_time,
                  prop_kernel,
@@ -20,22 +19,25 @@ class Affinity_Propagate(nn.Layer):
         """
         super(Affinity_Propagate, self).__init__()
         self.prop_time = prop_time
-        self.prop_kernel = prop_kernel
         assert prop_kernel == 3, 'this version only support 8 (3x3 - 1) neighborhood'
-
-        self.norm_type = norm_type
+        self.prop_kernel = prop_kernel
         assert norm_type in ['8sum', '8sum_abs']
-
+        self.norm_type = norm_type
         self.in_feature = 1
         self.out_feature = 1
-        self.sum_conv = nn.Conv3D(in_channels=8,
-                                  out_channels=1,
-                                  kernel_size=(1, 1, 1),
-                                  stride=1,
-                                  padding=0,
-                                  bias_attr=False)
+        self.sum_conv = nn.Conv3D(
+            in_channels=8,
+            out_channels=1,
+            kernel_size=(1, 1, 1),
+            stride=1,
+            padding=0,
+            bias_attr=False
+        )
         self.sum_conv.weight = paddle.create_parameter(
-            [1, 8, 1, 1, 1], dtype='float32', default_initializer=nn.initializer.Constant(1))
+            [1, 8, 1, 1, 1],
+            dtype='float32',
+            default_initializer=nn.initializer.Constant(1)
+        )
         for param in self.sum_conv.parameters():
             param.stop_gradient = True
             param.requires_grad = False
